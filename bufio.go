@@ -92,6 +92,34 @@ func (b *Reader) readErr() error {
 	return err
 }
 
+// Skip advances the reader by n bytes. It may call Read on the underlying
+// Reader multiple times. If the reader has already buffered n bytes, it's
+// guaranteed not to call Read. Returns number of bytes that's skipped
+// along with any error.
+func (b *Reader) Skip(n int) (int, error) {
+	if n < 0 {
+		return 0, ErrNegativeCount
+	}
+	if n == 0 {
+		return 0, nil
+	}
+	nn := n
+	for {
+		if b.err != nil {
+			return n - nn, b.readErr()
+		}
+		if b.r+nn <= b.w {
+			b.r += nn
+			return n, nil // skipped the required amount of bytes
+		}
+		nn -= b.w - b.r
+		b.r = 0
+		b.w = 0
+		b.fill()
+	}
+	panic("not reached")
+}
+
 // Peek returns the next n bytes without advancing the reader. The bytes stop
 // being valid at the next read call. If Peek returns fewer than n bytes, it
 // also returns an error explaining why the read is short. The error is

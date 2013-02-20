@@ -5,9 +5,9 @@
 package bufio_test
 
 import (
-	. "bufio"
 	"bytes"
 	"fmt"
+	. "github.com/cyfdecyf/bufio"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -499,6 +499,50 @@ func TestBufferFull(t *testing.T) {
 	line, err = buf.ReadSlice('!')
 	if string(line) != "world!" || err != nil {
 		t.Errorf("second ReadSlice(,) = %q, %v", line, err)
+	}
+}
+
+func TestSkip(t *testing.T) {
+	const longString = "And now, hello, world! It is the time for all good men to come to the aid of their party"
+	buf := NewReaderSize(strings.NewReader(longString), minReadBufferSize)
+
+	n, err := buf.Skip(-1)
+	if n != 0 || err != ErrNegativeCount {
+		t.Errorf("Skip with negative count should return error, n=%d err: %v\n", n, err)
+	}
+
+	buf.Skip(1)
+	if buf.Buffered() != 15 {
+		t.Fatal("skipping without buffered content should read into buffer")
+	}
+	buf.Skip(0)
+	b := make([]byte, 8)
+	n, err = buf.Read(b)
+	if n != 8 || err != nil {
+		t.Fatalf("read n=%d, err: %v\n", n, err)
+	}
+	if string(b) != longString[1:9] {
+		t.Fatalf("read content after skip wrong, got %q, should be %q\n", b, longString[1:9])
+	}
+
+	n, err = buf.Skip(2)
+	if n != 2 || err != nil {
+		t.Fatalf("skipped %d byte, err: %v\n", n, err)
+	}
+	if buf.Buffered() != 5 {
+		t.Fatalf("Buffered() wrong after skip, should be %d, got %d\n", 5, buf.Buffered())
+	}
+	buf.Skip(buf.Buffered())
+	if buf.Buffered() != 0 {
+		t.Fatal("skip all buffered content should result in 0 buffered")
+	}
+	n, err = buf.Skip(len(longString))
+	if n != len(longString)-minReadBufferSize {
+		t.Errorf("skip over end should return bytes skipped, should be %d, got %d\n",
+			len(longString)-minReadBufferSize, n)
+	}
+	if err != io.EOF {
+		t.Errorf("skip should return encountered error, got: %v\n", err)
 	}
 }
 
