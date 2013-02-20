@@ -305,6 +305,17 @@ func (b *Reader) ReadSlice(delim byte) (line []byte, err error) {
 	panic("not reached")
 }
 
+// ReadN uses Peek to read next n bytes and advances the reader.
+func (b *Reader) ReadN(n int) ([]byte, error) {
+	buf, err := b.Peek(n)
+	if err == nil {
+		b.r += n
+	} else {
+		b.r = b.w
+	}
+	return buf, err
+}
+
 // PeekSlice is the same as ReadSlice, except that it does not advance the
 // reader.
 func (b *Reader) PeekSlice(delim byte) (line []byte, err error) {

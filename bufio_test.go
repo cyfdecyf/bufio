@@ -513,7 +513,7 @@ func TestSkip(t *testing.T) {
 
 	buf.Skip(1)
 	if buf.Buffered() != 15 {
-		t.Fatal("skipping without buffered content should read into buffer")
+		t.Fatal("skipping without buffered content should read into internal buffer")
 	}
 	buf.Skip(0)
 	b := make([]byte, 8)
@@ -543,6 +543,58 @@ func TestSkip(t *testing.T) {
 	}
 	if err != io.EOF {
 		t.Errorf("skip should return encountered error, got: %v\n", err)
+	}
+}
+
+func TestReadN(t *testing.T) {
+	const longString = "And now, hello, world! It is the time for all good men to come to the aid of their party"
+	buf := NewReaderSize(strings.NewReader(longString), minReadBufferSize)
+
+	b, err := buf.ReadN(-1)
+	if len(b) != 0 || err != ErrNegativeCount {
+		t.Errorf("read with negative count should return error, n=%d err: %v\n", len(b), err)
+	}
+
+	b, err = buf.ReadN(1)
+	if b[0] != 'A' || err != nil {
+		t.Fatalf("want %c, got %c, err: %v\n", 'A', b[0], err)
+	}
+	if buf.Buffered() != 15 {
+		t.Fatalf("want buffered %d, got %d\n", 15, buf.Buffered())
+	}
+	buf.ReadN(0)
+	bb := make([]byte, 8)
+	if n, err := buf.Read(bb); n != 8 || err != nil {
+		t.Fatalf("read n=%d, err: %v\n", n, err)
+	}
+	if string(bb) != longString[1:9] {
+		t.Fatalf("read content after skip wrong, got %q, should be %q\n", b, longString[1:9])
+	}
+
+	b, err = buf.ReadN(2)
+	if len(b) != 2 || err != nil {
+		t.Fatalf("read 2 bytes, got %d byte, err: %v\n", len(b), err)
+	}
+	if buf.Buffered() != 5 {
+		t.Fatalf("Buffered() wrong after ReadN, should be %d, got %d\n", 5, buf.Buffered())
+	}
+	buf.ReadN(buf.Buffered())
+	if buf.Buffered() != 0 {
+		t.Fatal("read all buffered content should result in 0 buffered")
+	}
+	b, err = buf.ReadN(minReadBufferSize + 1)
+	if len(b) != 0 || err != ErrBufferFull {
+		t.Fatal("read with large n should got ErrBufferFull")
+	}
+
+	for {
+		b, err = buf.ReadN(minReadBufferSize)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Errorf("read to end got error: %v\n", err)
+		}
 	}
 }
 
