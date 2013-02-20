@@ -305,6 +305,39 @@ func (b *Reader) ReadSlice(delim byte) (line []byte, err error) {
 	panic("not reached")
 }
 
+// PeekSlice is the same as ReadSlice, except that it does not advance the
+// reader.
+func (b *Reader) PeekSlice(delim byte) (line []byte, err error) {
+	// Look in buffer.
+	if i := bytes.IndexByte(b.buf[b.r:b.w], delim); i >= 0 {
+		line1 := b.buf[b.r : b.r+i+1]
+		return line1, nil
+	}
+
+	// Read more into buffer, until buffer fills or we find delim.
+	for {
+		if b.err != nil {
+			line := b.buf[b.r:b.w]
+			return line, b.readErr()
+		}
+
+		n := b.Buffered()
+		b.fill()
+
+		// Search new part of buffer
+		if i := bytes.IndexByte(b.buf[n:b.w], delim); i >= 0 {
+			line := b.buf[0 : n+i+1]
+			return line, nil
+		}
+
+		// Buffer is full?
+		if b.Buffered() >= len(b.buf) {
+			return b.buf, ErrBufferFull
+		}
+	}
+	panic("not reached")
+}
+
 // ReadLine is a low-level line-reading primitive. Most callers should use
 // ReadBytes('\n') or ReadString('\n') instead.
 //

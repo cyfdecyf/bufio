@@ -641,6 +641,24 @@ func (t *testReader) Read(buf []byte) (n int, err error) {
 	return
 }
 
+func TestPeekSlice(t *testing.T) {
+	const longString = "And now, hello, world!\nIt is the time for all\ngood men to come to the aid of their party"
+	buf := NewReaderSize(strings.NewReader(longString), minReadBufferSize)
+	for {
+		b, err1 := buf.PeekSlice('\n')
+		bb, err2 := buf.ReadSlice('\n')
+		if err1 != err2 {
+			t.Errorf("PeekSlice got err: %v, ReadSlice got: %v\n", err1, err2)
+		}
+		if err1 != nil {
+			break
+		}
+		if !bytes.Equal(b, bb) {
+			t.Fatalf("PeekSlice and ReadSlice content differs: %q != %q\n", b, bb)
+		}
+	}
+}
+
 func testReadLine(t *testing.T, input []byte) {
 	//for stride := 1; stride < len(input); stride++ {
 	for stride := 1; stride < 2; stride++ {
