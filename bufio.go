@@ -59,6 +59,22 @@ func NewReaderSize(rd io.Reader, size int) *Reader {
 	}
 }
 
+// NewReaderFromBuf is the same as NewReaderSize except the buffer is provided
+// by uesr.
+func NewReaderFromBuf(rd io.Reader, buf []byte) *Reader {
+	// Is it already a Reader?
+	b, ok := rd.(*Reader)
+	if ok {
+		return b
+	}
+	return &Reader{
+		buf:          buf,
+		rd:           rd,
+		lastByte:     -1,
+		lastRuneSize: -1,
+	}
+}
+
 // NewReader returns a new Reader whose buffer has the default size.
 func NewReader(rd io.Reader) *Reader {
 	return NewReaderSize(rd, defaultBufSize)
