@@ -556,7 +556,7 @@ func TestReadN(t *testing.T) {
 	}
 
 	b, err = buf.ReadN(1)
-	if b[0] != 'A' || err != nil {
+	if len(b) != 1 || b[0] != 'A' || err != nil {
 		t.Fatalf("want %c, got %c, err: %v\n", 'A', b[0], err)
 	}
 	if buf.Buffered() != 15 {
@@ -595,6 +595,36 @@ func TestReadN(t *testing.T) {
 		if err != nil {
 			t.Errorf("read to end got error: %v\n", err)
 		}
+	}
+}
+
+func TestReadNext(t *testing.T) {
+	const longString = "And now, hello, world! It is the time for all good men to come to the aid of their party"
+	buf := NewReaderSize(strings.NewReader(longString), minReadBufferSize)
+
+	for i := 0; i < len(longString); i += minReadBufferSize {
+		b, err := buf.ReadNext()
+		end := i + minReadBufferSize
+		if end < len(longString) {
+			if err != nil {
+				t.Fatalf("should not get error before EOF: %v\n", err)
+			}
+			if len(b) != minReadBufferSize || string(b) != longString[i:i+minReadBufferSize] {
+				t.Fatalf("want %q, got %q\n", longString[i:i+minReadBufferSize], b)
+			}
+		}
+		if end >= len(longString) {
+			if len(b) != len(longString)-i || string(b) != longString[i:] {
+				t.Fatalf("final read want %q, got %q\n", longString[i:i+minReadBufferSize], b)
+			}
+		}
+	}
+	b, err := buf.ReadNext()
+	if len(b) != 0 {
+		t.Error("should return empty buffer for read past end")
+	}
+	if err != io.EOF {
+		t.Fatalf("should return EOF for final read")
 	}
 }
 

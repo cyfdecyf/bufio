@@ -332,6 +332,19 @@ func (b *Reader) ReadN(n int) ([]byte, error) {
 	return buf, err
 }
 
+// ReadNext calls Read on the underlying reader at most once, returning a
+// slice pointing at the bytes in the buffer, along with any encountered
+// error. The bytes stop being valid at the next read call.
+func (b *Reader) ReadNext() ([]byte, error) {
+	m := b.w - b.r
+	if m == 0 {
+		b.fill()
+	}
+	buf := b.buf[b.r:b.w]
+	b.r = b.w
+	return buf, b.readErr()
+}
+
 // PeekSlice is the same as ReadSlice, except that it does not advance the
 // reader.
 func (b *Reader) PeekSlice(delim byte) (line []byte, err error) {
